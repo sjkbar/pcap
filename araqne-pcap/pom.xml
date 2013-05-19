@@ -22,17 +22,13 @@
 					<instructions>
 						<Bundle-SymbolicName>org.araqne.pcap</Bundle-SymbolicName>
 						<Bundle-NativeCode>
-							lib/win32_x86/kpcap.dll; osname=win32;
+							lib/win32_x86/araqne_pcap.dll; osname=win32;
 							osname=windows server 2008;
 							processor=x86,
-							lib/win32_x86_64/kpcap.dll; osname=win32; osname=windows server
+							lib/win32_x86_64/araqne_pcap.dll; osname=win32; osname=windows server
 							2008;
 							processor=x86_64,
-							lib/linux_x86/libkpcap.so; osname=linux;
-							processor=x86,
-							lib/linux_x86_64/libkpcap.so; osname=linux;
-							processor=x86_64,
-							lib/osx_x64/libkpcap.dylib; osname=macosx;
+							lib/linux_x86_64/libaraqne_pcap.so; osname=linux;
 							processor=x86_64
 						</Bundle-NativeCode>
 						<Export-Package>
