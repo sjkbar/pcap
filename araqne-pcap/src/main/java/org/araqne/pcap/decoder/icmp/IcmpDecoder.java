@@ -51,7 +51,7 @@ public class IcmpDecoder implements IpProcessor {
 		p.setChecksum(b.getUnsignedShort());
 		p.setId(b.getUnsignedShort());
 		p.setSeq(b.getUnsignedShort());
-		
+
 		b.discardReadBytes();
 		p.setData(b);
 
@@ -59,14 +59,6 @@ public class IcmpDecoder implements IpProcessor {
 		for (IcmpProcessor callback : callbacks) {
 			try {
 				callback.process(new IcmpPacket(p));
-			} catch (Exception e) {
-				e.printStackTrace();
-			}
-		}
-		
-		for (IcmpProcessor callback : callbacks) {
-			try {
-				callback.process(p);
 			} catch (Exception e) {
 				e.printStackTrace();
 			}
