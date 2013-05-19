@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd"
+	xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+	<modelVersion>4.0.0</modelVersion>
+	<parent>
+		<groupId>org.araqne</groupId>
+		<artifactId>araqne-pcap-pom</artifactId>
+		<version>1.0.0</version>
+	</parent>
+	<artifactId>araqne-mime</artifactId>
+	<packaging>bundle</packaging>
+	<name>Araqne Mime</name>
+	<build>
+		<plugins>
+			<plugin>
+				<groupId>org.apache.felix</groupId>
+				<artifactId>maven-bundle-plugin</artifactId>
+				<extensions>true</extensions>
+				<configuration>
+					<instructions>
+						<Bundle-SymbolicName>org.araqne.mime</Bundle-SymbolicName>
+						<Export-Package>org.araqne.mime;version=${project.version}</Export-Package>
+						<Import-Package>*</Import-Package>
+					</instructions>
+				</configuration>
+			</plugin>
+			<plugin>
+				<groupId>org.apache.felix</groupId>
+				<artifactId>maven-ipojo-plugin</artifactId>
+				<executions>
+					<execution>
+						<goals>
+							<goal>ipojo-bundle</goal>
+						</goals>
+					</execution>
+				</executions>
+			</plugin>
+		</plugins>
+	</build>
+	<dependencies>
+		<dependency>
+			<groupId>org.araqne</groupId>
+			<artifactId>araqne-api</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.araqne</groupId>
+			<artifactId>araqne-mail</artifactId>
+		</dependency>
+	</dependencies>
+</project>

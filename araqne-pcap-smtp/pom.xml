@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd"
+	xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+	<modelVersion>4.0.0</modelVersion>
+	<parent>
+		<artifactId>araqne-pcap-pom</artifactId>
+		<groupId>org.araqne</groupId>
+		<version>1.0.0</version>
+	</parent>
+	<artifactId>araqne-pcap-smtp</artifactId>
+	<version>1.1.0</version>
+	<packaging>bundle</packaging>
+	<name>Araqne PCAP SMTP</name>
+	<build>
+		<plugins>
+			<plugin>
+				<groupId>org.apache.felix</groupId>
+				<artifactId>maven-bundle-plugin</artifactId>
+				<extensions>true</extensions>
+				<configuration>
+					<instructions>
+						<Bundle-SymbolicName>org.araqne.pcap.smtp</Bundle-SymbolicName>
+						<Import-Package>javax.activation;version="[1.1.1,2.0.0)",
+							javax.mail;version="1.4.1",
+							javax.mail.event;version="1.4.1",
+							javax.mail.internet;version="1.4.1",
+							javax.mail.search;version="1.4.1",
+							javax.mail.util;version="1.4.1" ,*</Import-Package>
+						<Export-Package>org.araqne.pcap.smtp;version=${project.version}</Export-Package>
+					</instructions>
+				</configuration>
+			</plugin>
+			<plugin>
+				<groupId>org.apache.felix</groupId>
+				<artifactId>maven-ipojo-plugin</artifactId>
+				<executions>
+					<execution>
+						<goals>
+							<goal>ipojo-bundle</goal>
+						</goals>
+					</execution>
+				</executions>
+			</plugin>
+		</plugins>
+	</build>
+	<dependencies>
+		<dependency>
+			<groupId>org.araqne</groupId>
+			<artifactId>araqne-api</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.araqne</groupId>
+			<artifactId>araqne-pcap</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.araqne</groupId>
+			<artifactId>araqne-mime</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.slf4j</groupId>
+			<artifactId>slf4j-api</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>javax.mail</groupId>
+			<artifactId>mail</artifactId>
+			<version>1.4.1</version>
+		</dependency>
+	</dependencies>
+</project>

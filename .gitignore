@@ -1,0 +1,10 @@
+.settings
+.project
+.classpath
+target
+*.suo
+*.opensdf
+*.sdf
+*.vcxproj.user
+Debug
+Release
