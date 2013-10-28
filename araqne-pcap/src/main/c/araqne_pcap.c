@@ -261,18 +261,17 @@ JNIEXPORT void JNICALL Java_org_araqne_pcap_live_PcapDevice_open(JNIEnv *env, jo
 }
 
 JNIEXPORT jobject JNICALL Java_org_araqne_pcap_live_PcapDevice_getPacket(JNIEnv *env, jobject obj, jint id) {
-	struct pcap_pkthdr *pkt_header = NULL;
+	struct pcap_pkthdr pkt_header;
 	const u_char *pkt_data = NULL;
 	jboolean isNonblock;
 	int startTime = (int)GetTickCount();
 	
 	if(checkDeviceStatus(env, id) == -1) return NULL;
 
-	pkt_header = (struct pcap_pkthdr *)malloc( sizeof(struct pcap_pkthdr) );
 	isNonblock = Java_org_araqne_pcap_live_PcapDevice_isNonblock(env, obj, id);
 
 	if(isNonblock)
-		pkt_data = pcap_next(pcds[id], pkt_header);
+		pkt_data = pcap_next(pcds[id], &pkt_header);
 	else {
 		while(pkt_data == NULL && (int)GetTickCount() - startTime < t_limit[id]) {
 			if(pcds[id] == NULL) {
@@ -281,7 +280,7 @@ JNIEXPORT jobject JNICALL Java_org_araqne_pcap_live_PcapDevice_getPacket(JNIEnv 
 				return NULL;
 			}
 			getPacketFlag[id] = 1;
-			pkt_data = pcap_next(pcds[id], pkt_header);
+			pkt_data = pcap_next(pcds[id], &pkt_header);
 			getPacketFlag[id] = 0;
 		}
 	}
@@ -296,7 +295,7 @@ JNIEXPORT jobject JNICALL Java_org_araqne_pcap_live_PcapDevice_getPacket(JNIEnv 
 		}
 	}
 
-	return makePacket(env, pkt_header, pkt_data);
+	return makePacket(env, &pkt_header, pkt_data);
 }
 
 JNIEXPORT void JNICALL Java_org_araqne_pcap_live_PcapDevice_write(JNIEnv *env, jobject obj, jint id, jbyteArray packet, jint offset, jint length) {
