@@ -6,8 +6,6 @@ package org.araqne.pcap.dcerpc.srvsvc.rr;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.araqne.pcap.dcerpc.rpce.rr.StatusCode;
-
 /**
  * @author tgnice@nchovy.com
  *
