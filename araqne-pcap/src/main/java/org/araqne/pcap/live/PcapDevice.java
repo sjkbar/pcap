@@ -95,14 +95,14 @@ public class PcapDevice implements PcapInputStream, PcapOutputStream {
 	 *             if the device is not opened, or timeout occurred in blocking
 	 *             mode.
 	 */
+	@Deprecated
 	@Override
 	public PcapPacket getPacket() throws IOException {
 		verify();
-		// for(;;);
 		return getPacket(handle);
 	}
 
-	public List<PcapPacket> getPacketBuffered() {
+	public List<PcapPacket> getPackets() {
 		int len, pkt = 0, timeout = milliseconds;
 		int tsSec, tsUsec, inclLen, origLen;
 		ArrayList<PcapPacket> packetList = new ArrayList<PcapPacket>();

@@ -90,7 +90,7 @@ public class PcapLiveRunner implements Runnable {
 					if (stop)
 						break;
 
-					List<PcapPacket> list = device.getPacketBuffered();
+					List<PcapPacket> list = device.getPackets();
 					int numpkt = list.size();
 					for (int i = 0; i < numpkt; i++)
 						eth.decode(list.get(i));
@@ -111,8 +111,8 @@ public class PcapLiveRunner implements Runnable {
 	}
 
 	public void runOnce() throws IOException {
-		PcapPacket packet = device.getPacket();
-		eth.decode(packet);
+		for (PcapPacket packet : device.getPackets())
+			eth.decode(packet);
 	}
 
 	public PcapDevice getDevice() {

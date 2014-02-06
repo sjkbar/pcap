@@ -21,6 +21,7 @@ import java.net.InetAddress;
 import java.util.Collection;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import org.araqne.pcap.decoder.arp.ArpDecoder;
@@ -43,19 +44,18 @@ import org.araqne.pcap.routing.RoutingTable;
  * @author xeraph
  */
 public class Arping {
-	public static Map<InetAddress, MacAddress> scan(String deviceName, int timeout) throws InterruptedException,
-			IOException {
+	public static Map<InetAddress, MacAddress> scan(String deviceName, int timeout) throws InterruptedException, IOException {
 		PcapDeviceMetadata metadata = PcapDeviceManager.getDeviceMetadata(deviceName);
 		return scan(metadata.getName(), metadata.getSubnet(), metadata.getNetmask(), timeout);
 	}
 
-	public static Map<InetAddress, MacAddress> scan(String deviceName, InetAddress network, InetAddress mask,
-			int timeout) throws InterruptedException, IOException {
+	public static Map<InetAddress, MacAddress> scan(String deviceName, InetAddress network, InetAddress mask, int timeout)
+			throws InterruptedException, IOException {
 		return scan(deviceName, network, mask, timeout, 0);
 	}
 
-	public static Map<InetAddress, MacAddress> scan(String deviceName, InetAddress network, InetAddress mask,
-			int timeout, int ipg) throws InterruptedException, IOException {
+	public static Map<InetAddress, MacAddress> scan(String deviceName, InetAddress network, InetAddress mask, int timeout, int ipg)
+			throws InterruptedException, IOException {
 		if (!(network instanceof Inet4Address) || !(mask instanceof Inet4Address))
 			throw new IllegalArgumentException("network address should be IPv4 address");
 
@@ -113,11 +113,10 @@ public class Arping {
 
 			try {
 				while (!stop) {
-					PcapPacket p = device.getPacket();
-					eth.decode(p);
+					for (PcapPacket p : device.getPackets())
+						eth.decode(p);
 					addToCache(table, callback);
 				}
-			} catch (IOException e) {
 			} finally {
 				try {
 					if (device != null && device.isOpen())
@@ -138,7 +137,7 @@ public class Arping {
 		PcapDevice device = PcapDeviceManager.open(deviceName, timeout);
 		device.setFilter("arp", false);
 
-		device.getPacket();
+		device.getPackets();
 
 		PcapDeviceMetadata metadata = PcapDeviceManager.getDeviceMetadata(deviceName);
 		for (InetAddress target : targets) {
@@ -149,14 +148,10 @@ public class Arping {
 
 		long begin = new Date().getTime();
 		while (true) {
-			try {
-				PcapPacket packet = device.getPacket();
+			for (PcapPacket packet : device.getPackets())
 				eth.decode(packet);
-				addToCache(table, callback);
-			} catch (IOException e) {
-				if (!e.getMessage().equals("Timeout"))
-					throw e;
-			}
+			addToCache(table, callback);
+
 			long end = new Date().getTime();
 			if (end - begin > timeout)
 				break;
@@ -207,18 +202,16 @@ public class Arping {
 		ArpPacket last = null;
 		long begin = new Date().getTime();
 		while (true) {
-			try {
-				PcapPacket packet = device.getPacket();
+			List<PcapPacket> packets = device.getPackets();
+			for (PcapPacket packet : packets)
 				eth.decode(packet);
-				ArpPacket reply = callback.getLast();
-				if (reply != null && reply.getOpcode() == 0x2 && reply.getSenderIp().equals(targetIp)) {
-					last = reply;
-					break;
-				}
-			} catch (IOException e) {
-				if (!e.getMessage().equals("Timeout"))
-					throw e;
+
+			ArpPacket reply = callback.getLast();
+			if (reply != null && reply.getOpcode() == 0x2 && reply.getSenderIp().equals(targetIp)) {
+				last = reply;
+				break;
 			}
+
 			long end = new Date().getTime();
 			if (end - begin > timeout)
 				break;

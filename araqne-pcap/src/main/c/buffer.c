@@ -230,7 +230,7 @@ static void buffer_txthread( void *p )
 			{
 				//flush
 				#ifdef _WIN32
-				printf( "tx:%d\n", pkt );
+//				printf( "tx:%d\n", pkt );
 				pcap_sendqueue_transmit( buffer->pcd, buffer->squeue, FALSE );
 				pcap_sendqueue_destroy( buffer->squeue );
 				buffer->squeue = pcap_sendqueue_alloc( sendqueue_buffer_max );
@@ -249,7 +249,7 @@ static void buffer_txthread( void *p )
 		{
 			//flush
 			#ifdef _WIN32
-			printf( "tx:%d\n", pkt );
+//			printf( "tx:%d\n", pkt );
 			pcap_sendqueue_transmit( buffer->pcd, buffer->squeue, FALSE);
 			pcap_sendqueue_destroy( buffer->squeue );
 			buffer->squeue = pcap_sendqueue_alloc( sendqueue_buffer_max );
@@ -325,6 +325,11 @@ static void buffer_thread( void *p )
 		DWORD flags = 0;
 		int waiter = 0;
 		struct pcap_pkthdr ph;
+		if ( sock->terminate )
+		{
+			InterlockedDecrement( &sock->terminate );
+			return;
+		}
 
 		ret = buffer_alloc( tbuf, lastsize );
 		if ( ret < 0 )

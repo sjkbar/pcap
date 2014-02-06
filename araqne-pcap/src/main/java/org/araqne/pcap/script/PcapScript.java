@@ -210,9 +210,9 @@ public class PcapScript implements Script {
 		int sPort = session.getKey().getServerPort();
 		InetAddress cIp = session.getKey().getClientIp();
 		int cPort = session.getKey().getClientPort();
-		device.setFilter(String.format("tcp and src net %s and src port %d and dst net %s and dst port %d",
-				cIp.getHostAddress(), cPort, sIp.getHostAddress(), sPort));
-		Buffer packet = device.getPacket().getPacketData();
+		device.setFilter(String.format("tcp and src net %s and src port %d and dst net %s and dst port %d", cIp.getHostAddress(),
+				cPort, sIp.getHostAddress(), sPort));
+		Buffer packet = device.getPackets().get(0).getPacketData();
 
 		byte[] dstMac = new byte[6];
 		byte[] srcMac = new byte[6];
@@ -223,8 +223,7 @@ public class PcapScript implements Script {
 
 		int seq = TcpPacket.parse(Ipv4Packet.parse(packet)).getSeq();
 		TcpPacket tcp = new TcpPacket.Builder().src(cIp, cPort).dst(sIp, sPort).window(0).seq(seq).rst().build();
-		Ipv4Packet ip = new Ipv4Packet.Builder().src(cIp).dst(sIp).proto(InternetProtocol.TCP).data(tcp.getBuffer())
-				.build();
+		Ipv4Packet ip = new Ipv4Packet.Builder().src(cIp).dst(sIp).proto(InternetProtocol.TCP).data(tcp.getBuffer()).build();
 		Injectable ethernet = new EthernetFrame.Builder().src(new MacAddress(srcMac)).dst(new MacAddress(dstMac))
 				.type(EthernetType.IPV4).data(ip.getBuffer()).build();
 		device.write(ethernet.getBuffer());
