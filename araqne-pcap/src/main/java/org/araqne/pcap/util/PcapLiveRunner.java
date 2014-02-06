@@ -16,6 +16,7 @@
 package org.araqne.pcap.util;
 
 import java.io.IOException;
+import java.util.List;
 
 import org.araqne.pcap.Protocol;
 import org.araqne.pcap.decoder.arp.ArpDecoder;
@@ -45,8 +46,7 @@ import org.slf4j.LoggerFactory;
  * @author delmitz
  */
 public class PcapLiveRunner implements Runnable {
-	private final Logger logger = LoggerFactory.getLogger(PcapLiveRunner.class
-			.getName());
+	private final Logger logger = LoggerFactory.getLogger(PcapLiveRunner.class.getName());
 	private volatile boolean stop = false;
 	private PcapDevice device;
 
@@ -90,14 +90,10 @@ public class PcapLiveRunner implements Runnable {
 					if (stop)
 						break;
 
-					PcapPacket packet = device.getPacket();
-					if (packet != null)
-						eth.decode(packet);
-				} catch (IOException e) {
-					if (e.getMessage().equalsIgnoreCase("Timeout"))
-						continue;
-
-					throw e;
+					List<PcapPacket> list = device.getPacketBuffered();
+					int numpkt = list.size();
+					for (int i = 0; i < numpkt; i++)
+						eth.decode(list.get(i));
 				} catch (Exception e) {
 					logger.warn("araqne-pcap: decode error", e);
 				}
@@ -111,8 +107,7 @@ public class PcapLiveRunner implements Runnable {
 		PcapDeviceMetadata metadata = device.getMetadata();
 		MacAddress macAddress = metadata.getMacAddress();
 		String desc = metadata.getDescription();
-		logger.trace("araqne-pcap: live runner mac={}, desc={} stopped",
-				macAddress, desc);
+		logger.trace("araqne-pcap: live runner mac={}, desc={} stopped", macAddress, desc);
 	}
 
 	public void runOnce() throws IOException {

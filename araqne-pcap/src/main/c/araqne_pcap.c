@@ -37,8 +37,13 @@
   #include <ifaddrs.h>
 #endif
 #include <stdlib.h>
+#define HAVE_REMOTE
+#define WPCAP
 #include <pcap.h>
 #include "org_araqne_pcap_live_PcapDevice.h"
+#ifndef PCAP_OPENFLAG_NOCAPTURE_RPCAP
+#define PCAP_OPENFLAG_NOCAPTURE_RPCAP 0
+#endif
 
 #define MAX_NUMBER_OF_INSTANCE 255L
 
@@ -246,12 +251,12 @@ JNIEXPORT void JNICALL Java_org_araqne_pcap_live_PcapDevice_open(JNIEnv *env, jo
 	devName = (const char *)(*env)->GetStringUTFChars(env, name, JNI_FALSE);
 
 #ifdef WIN32
-	sprintf_s(deviceName, sizeof(deviceName), "\\Device\\NPF_%s", devName);
+	sprintf_s(deviceName, sizeof(deviceName), "rpcap://\\Device\\NPF_%s", devName);
 #else
 	snprintf(deviceName, sizeof(deviceName)-1, "%s", devName);
 #endif
 
-	pcds[id] = pcap_open_live(deviceName, snaplen, (promisc == JNI_TRUE ? 1 : 0), 100, errbuf);
+	pcds[id] = pcap_open_live(deviceName, snaplen, (promisc == JNI_TRUE ? 1 : 0) | PCAP_OPENFLAG_NOCAPTURE_RPCAP, 100, errbuf);
 	t_limit[id] = milliseconds;
 
 	(*env)->ReleaseStringUTFChars(env, name, devName);

@@ -28,7 +28,7 @@ libaraqne_pcap.so:
 ifeq ($(JAVA_HOME),)
 	$(error JAVA_HOME is not set)
 else
-	gcc araqne_pcap.c routingtable.c -o $(libpath)/$(TARGET) -shared -Wall $(CFLAGS) -lpcap -fPIC
+	gcc araqne_pcap.c routingtable.c buffer.c -o $(libpath)/$(TARGET) -shared -Wall $(CFLAGS) -lpcap -lrt -fPIC
 endif
 
 clean:

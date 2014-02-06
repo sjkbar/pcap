@@ -18,10 +18,16 @@ package org.araqne.pcap.live;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
+import java.util.ArrayList;
 
 import org.araqne.pcap.PcapInputStream;
 import org.araqne.pcap.PcapOutputStream;
+import org.araqne.pcap.packet.PacketHeader;
+import org.araqne.pcap.packet.PacketPayload;
 import org.araqne.pcap.packet.PcapPacket;
 import org.araqne.pcap.util.Buffer;
 
@@ -42,13 +48,23 @@ public class PcapDevice implements PcapInputStream, PcapOutputStream {
 	private int handle;
 	private PcapDeviceMetadata metadata;
 	private Set<PcapDeviceEventListener> callbacks;
+	private ByteBuffer buffer;
+	private ByteBuffer txbuffer;
+	private int milliseconds;
+	private int offset, txoffset;
 
 	PcapDevice(PcapDeviceMetadata metadata, int handle, String name, int snaplen, boolean promisc, int milliseconds)
 			throws IOException {
 		this.metadata = metadata;
 		this.handle = handle;
 		this.callbacks = Collections.synchronizedSet(new HashSet<PcapDeviceEventListener>());
-		open(handle, name, snaplen, promisc, milliseconds);
+		this.milliseconds = milliseconds;
+		buffer = openBuffer(handle, name, snaplen, promisc, milliseconds);
+		buffer.order(ByteOrder.LITTLE_ENDIAN);
+		txbuffer = getTxBuffer(buffer);
+		txbuffer.order(ByteOrder.LITTLE_ENDIAN);
+		txoffset = writeBuffer(txbuffer, -1);
+		// openBuffer(handle, name, snaplen, promisc, milliseconds);
 	}
 
 	public int getHandle() {
@@ -67,7 +83,9 @@ public class PcapDevice implements PcapInputStream, PcapOutputStream {
 		callbacks.remove(callback);
 	}
 
-	private native void open(int handle, String name, int snaplen, boolean promisc, int milliseconds)
+	private native void open(int handle, String name, int snaplen, boolean promisc, int milliseconds) throws IOException;
+
+	private native ByteBuffer openBuffer(int handle, String name, int snaplen, boolean promisc, int milliseconds)
 			throws IOException;
 
 	/**
@@ -80,10 +98,50 @@ public class PcapDevice implements PcapInputStream, PcapOutputStream {
 	@Override
 	public PcapPacket getPacket() throws IOException {
 		verify();
+		// for(;;);
 		return getPacket(handle);
 	}
 
+	public List<PcapPacket> getPacketBuffered() {
+		int len, pkt = 0, timeout = milliseconds;
+		int tsSec, tsUsec, inclLen, origLen;
+		ArrayList<PcapPacket> packetList = new ArrayList<PcapPacket>();
+
+		while (true) {
+			int ret = getPacketBuffered(buffer, offset, timeout);
+			if (ret >= 0) {
+				offset = ret;
+				buffer.position(offset);
+				len = buffer.getInt();
+				tsSec = buffer.getInt();
+				tsUsec = buffer.getInt();
+				inclLen = buffer.getInt();
+				origLen = buffer.getInt();
+				len -= 16;
+				byte data[] = new byte[len];
+				buffer.get(data, 0, len);
+
+				PacketHeader ph = new PacketHeader(tsSec, tsUsec, inclLen, origLen);
+				PacketPayload pl = new PacketPayload(data);
+				PcapPacket pp = new PcapPacket(ph, pl);
+				packetList.add(pp);
+				pkt++;
+				if (pkt >= 128)
+					return packetList;
+				timeout = 0;
+			} else {
+				return packetList;
+			}
+		}
+	}
+
 	private native PcapPacket getPacket(int id) throws IOException;
+
+	private native int getPacketBuffered(ByteBuffer buf, int freepos, int timeout);
+
+	private native ByteBuffer getTxBuffer(ByteBuffer buf);
+
+	private native int writeBuffer(ByteBuffer buf, int len);
 
 	/**
 	 * Injects a packet to the device. You can even send malformed packet.
@@ -123,7 +181,13 @@ public class PcapDevice implements PcapInputStream, PcapOutputStream {
 		write(handle, b, 0, b.length);
 	}
 
-	private native void write(int id, byte[] packet, int offset, int limit) throws IOException;
+	// private native void write(int id, byte[] packet, int offset, int limit)
+	// throws IOException;
+	private void write(int id, byte[] packet, int offset, int limit) {
+		txbuffer.position(txoffset + 12);
+		txbuffer.put(packet, offset, limit);
+		txoffset = writeBuffer(txbuffer, limit);
+	}
 
 	/**
 	 * Changes blocking mode of the device.
@@ -176,8 +240,7 @@ public class PcapDevice implements PcapInputStream, PcapOutputStream {
 		setFilter(handle, (filter != null ? filter : ""), optimize ? 1 : 0, metadata.getNetworkPrefixLength());
 	}
 
-	private native void setFilter(int id, String filter, int optimize, int netmask) throws IOException,
-			IllegalArgumentException;
+	private native void setFilter(int id, String filter, int optimize, int netmask) throws IOException, IllegalArgumentException;
 
 	/**
 	 * Gets pcap packet capture statistics from libpcap.
@@ -199,7 +262,7 @@ public class PcapDevice implements PcapInputStream, PcapOutputStream {
 	@Override
 	public void close() throws IOException {
 		verify();
-		close(handle);
+		closeBuffer(buffer);// handle);
 		isOpen = false;
 
 		for (PcapDeviceEventListener callback : callbacks) {
@@ -208,6 +271,8 @@ public class PcapDevice implements PcapInputStream, PcapOutputStream {
 	}
 
 	private native void close(int id) throws IOException;
+
+	private native void closeBuffer(ByteBuffer buf);
 
 	public static native String getPcapLibVersion();
 
@@ -218,8 +283,8 @@ public class PcapDevice implements PcapInputStream, PcapOutputStream {
 
 	@Override
 	public String toString() {
-		return String.format("NetworkInterface [name=%s, description=%s, macAddress=%s]", metadata.getName(), metadata
-				.getDescription(), metadata.getMacAddress());
+		return String.format("NetworkInterface [name=%s, description=%s, macAddress=%s]", metadata.getName(),
+				metadata.getDescription(), metadata.getMacAddress());
 	}
 
 	public boolean isOpen() {
