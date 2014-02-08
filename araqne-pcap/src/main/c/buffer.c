@@ -37,6 +37,20 @@ typedef struct wsaevent_t {
 	volatile int signal;
 } *WSAEVENT;
 
+BOOL WINAPI DllMain(HINSTANCE module_handle, DWORD reason_for_call, LPVOID reserved)
+{
+	if (reason_for_call == DLL_PROCESS_ATTACH)
+	{
+		WSADATA wd;
+		WSAStartup( 0x202, &wd );
+	}
+	if (reason_for_call == DLL_PROCESS_DETACH)
+	{
+		WSACleanup();
+	}
+	return TRUE;
+}
+
 WSAEVENT WSACreateEvent()
 {
 	WSAEVENT event = (WSAEVENT)malloc( sizeof(struct wsaevent_t) );
@@ -446,7 +460,7 @@ JNIEXPORT jobject JNICALL Java_org_araqne_pcap_live_PcapDevice_openBuffer(JNIEnv
 	struct socket_t *sock;
 	int txon = 1;
 
-	WSAStartup( 0x202, &wd );
+//	WSAStartup( 0x202, &wd );
 
 	Java_org_araqne_pcap_live_PcapDevice_open(env, obj, id, name, snaplen, promisc, milliseconds);
 	if ( pcds[id] == NULL )

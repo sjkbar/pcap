@@ -44,6 +44,8 @@ public class PcapDevice implements PcapInputStream, PcapOutputStream {
 		System.loadLibrary("araqne_pcap");
 	}
 
+	private static Object nativeLock = new Object();
+
 	private boolean isOpen = true;
 	private int handle;
 	private PcapDeviceMetadata metadata;
@@ -59,11 +61,15 @@ public class PcapDevice implements PcapInputStream, PcapOutputStream {
 		this.handle = handle;
 		this.callbacks = Collections.synchronizedSet(new HashSet<PcapDeviceEventListener>());
 		this.milliseconds = milliseconds;
-		buffer = openBuffer(handle, name, snaplen, promisc, milliseconds);
-		buffer.order(ByteOrder.LITTLE_ENDIAN);
-		txbuffer = getTxBuffer(buffer);
-		txbuffer.order(ByteOrder.LITTLE_ENDIAN);
-		txoffset = writeBuffer(txbuffer, -1);
+
+		synchronized (nativeLock) {
+			buffer = openBuffer(handle, name, snaplen, promisc, milliseconds);
+			buffer.order(ByteOrder.LITTLE_ENDIAN);
+			txbuffer = getTxBuffer(buffer);
+			txbuffer.order(ByteOrder.LITTLE_ENDIAN);
+			txoffset = writeBuffer(txbuffer, -1);
+		}
+
 		// openBuffer(handle, name, snaplen, promisc, milliseconds);
 	}
 
@@ -99,7 +105,9 @@ public class PcapDevice implements PcapInputStream, PcapOutputStream {
 	@Override
 	public PcapPacket getPacket() throws IOException {
 		verify();
-		return getPacket(handle);
+		synchronized (nativeLock) {
+			return getPacket(handle);
+		}
 	}
 
 	public List<PcapPacket> getPackets() {
@@ -108,7 +116,11 @@ public class PcapDevice implements PcapInputStream, PcapOutputStream {
 		ArrayList<PcapPacket> packetList = new ArrayList<PcapPacket>();
 
 		while (true) {
-			int ret = getPacketBuffered(buffer, offset, timeout);
+			int ret = 0;
+			synchronized (nativeLock) {
+				ret = getPacketBuffered(buffer, offset, timeout);
+			}
+
 			if (ret >= 0) {
 				offset = ret;
 				buffer.position(offset);
@@ -184,9 +196,11 @@ public class PcapDevice implements PcapInputStream, PcapOutputStream {
 	// private native void write(int id, byte[] packet, int offset, int limit)
 	// throws IOException;
 	private void write(int id, byte[] packet, int offset, int limit) {
-		txbuffer.position(txoffset + 12);
-		txbuffer.put(packet, offset, limit);
-		txoffset = writeBuffer(txbuffer, limit);
+		synchronized (nativeLock) {
+			txbuffer.position(txoffset + 12);
+			txbuffer.put(packet, offset, limit);
+			txoffset = writeBuffer(txbuffer, limit);
+		}
 	}
 
 	/**
@@ -199,7 +213,10 @@ public class PcapDevice implements PcapInputStream, PcapOutputStream {
 	 */
 	public void setNonblock(boolean nonblock) throws IOException {
 		verify();
-		setNonblock(handle, nonblock ? 1 : 0);
+
+		synchronized (nativeLock) {
+			setNonblock(handle, nonblock ? 1 : 0);
+		}
 	}
 
 	private native void setNonblock(int id, int nonblock) throws IOException;
@@ -213,7 +230,10 @@ public class PcapDevice implements PcapInputStream, PcapOutputStream {
 	 */
 	public boolean isNonblock() throws IOException {
 		verify();
-		return isNonblock(handle);
+
+		synchronized (nativeLock) {
+			return isNonblock(handle);
+		}
 	}
 
 	private native boolean isNonblock(int id) throws IOException;
@@ -237,7 +257,10 @@ public class PcapDevice implements PcapInputStream, PcapOutputStream {
 	 */
 	public void setFilter(String filter, boolean optimize) throws IOException, IllegalArgumentException {
 		verify();
-		setFilter(handle, (filter != null ? filter : ""), optimize ? 1 : 0, metadata.getNetworkPrefixLength());
+
+		synchronized (nativeLock) {
+			setFilter(handle, (filter != null ? filter : ""), optimize ? 1 : 0, metadata.getNetworkPrefixLength());
+		}
 	}
 
 	private native void setFilter(int id, String filter, int optimize, int netmask) throws IOException, IllegalArgumentException;
@@ -251,7 +274,10 @@ public class PcapDevice implements PcapInputStream, PcapOutputStream {
 	 */
 	public PcapStat getStat() throws IOException {
 		verify();
-		return getStat(handle);
+
+		synchronized (nativeLock) {
+			return getStat(handle);
+		}
 	}
 
 	private native PcapStat getStat(int id) throws IOException;
@@ -262,8 +288,11 @@ public class PcapDevice implements PcapInputStream, PcapOutputStream {
 	@Override
 	public void close() throws IOException {
 		verify();
-		closeBuffer(buffer);// handle);
-		isOpen = false;
+
+		synchronized (nativeLock) {
+			closeBuffer(buffer);// handle);
+			isOpen = false;
+		}
 
 		for (PcapDeviceEventListener callback : callbacks) {
 			callback.onClosed(this);
