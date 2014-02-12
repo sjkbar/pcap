@@ -64,7 +64,6 @@ public class PcapDevice implements PcapInputStream, PcapOutputStream {
 		this.callbacks = Collections.synchronizedSet(new HashSet<PcapDeviceEventListener>());
 		this.milliseconds = milliseconds;
 
-		System.out.println("in pcap device constructor");
 		synchronized (nativeLock) {
 			buffer = openBuffer(handle, name, snaplen, promisc, milliseconds);
 			buffer.order(ByteOrder.LITTLE_ENDIAN);
