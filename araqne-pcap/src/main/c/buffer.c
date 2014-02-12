@@ -16,6 +16,19 @@ extern pcap_t *pcds[];
 #undef Yield()
 #define Yield() Sleep(0)
 #endif
+BOOL WINAPI DllMain(HINSTANCE module_handle, DWORD reason_for_call, LPVOID reserved)
+{
+	if (reason_for_call == DLL_PROCESS_ATTACH)
+	{
+		WSADATA wd;
+		WSAStartup( 0x202, &wd );
+	}
+	if (reason_for_call == DLL_PROCESS_DETACH)
+	{
+		WSACleanup();
+	}
+	return TRUE;
+}
 #else
 #include <pthread.h>
 #include <sys/types.h>
@@ -40,20 +53,6 @@ typedef struct wsaevent_t {
 	volatile int wait;
 	volatile int signal;
 } *WSAEVENT;
-
-BOOL WINAPI DllMain(HINSTANCE module_handle, DWORD reason_for_call, LPVOID reserved)
-{
-	if (reason_for_call == DLL_PROCESS_ATTACH)
-	{
-		WSADATA wd;
-		WSAStartup( 0x202, &wd );
-	}
-	if (reason_for_call == DLL_PROCESS_DETACH)
-	{
-		WSACleanup();
-	}
-	return TRUE;
-}
 
 WSAEVENT WSACreateEvent()
 {
@@ -207,7 +206,9 @@ static void buffer_txthread( void *p )
 	pktheader.ts.tv_sec = 0;
 	pktheader.ts.tv_usec = 0;
 	pkt = 0;
+	#ifdef _WIN32
 	buffer->squeue = pcap_sendqueue_alloc( sendqueue_buffer_max );
+	#endif
 
 	for ( ;; )
 	{
