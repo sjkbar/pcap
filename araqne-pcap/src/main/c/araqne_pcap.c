@@ -251,7 +251,7 @@ JNIEXPORT void JNICALL Java_org_araqne_pcap_live_PcapDevice_open(JNIEnv *env, jo
 	devName = (const char *)(*env)->GetStringUTFChars(env, name, JNI_FALSE);
 
 #ifdef WIN32
-	sprintf_s(deviceName, sizeof(deviceName), "rpcap://\\Device\\NPF_%s", devName);
+	sprintf_s(deviceName, sizeof(deviceName), "\\Device\\NPF_%s", devName);
 #else
 	snprintf(deviceName, sizeof(deviceName)-1, "%s", devName);
 #endif

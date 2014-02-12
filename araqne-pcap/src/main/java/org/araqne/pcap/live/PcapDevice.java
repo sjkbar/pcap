@@ -45,6 +45,8 @@ public class PcapDevice implements PcapInputStream, PcapOutputStream {
 	}
 
 	private static Object nativeLock = new Object();
+	private Object rxLock = new Object();
+	private Object txLock = new Object();
 
 	private boolean isOpen = true;
 	private int handle;
@@ -62,6 +64,7 @@ public class PcapDevice implements PcapInputStream, PcapOutputStream {
 		this.callbacks = Collections.synchronizedSet(new HashSet<PcapDeviceEventListener>());
 		this.milliseconds = milliseconds;
 
+		System.out.println("in pcap device constructor");
 		synchronized (nativeLock) {
 			buffer = openBuffer(handle, name, snaplen, promisc, milliseconds);
 			buffer.order(ByteOrder.LITTLE_ENDIAN);
@@ -117,32 +120,32 @@ public class PcapDevice implements PcapInputStream, PcapOutputStream {
 
 		while (true) {
 			int ret = 0;
-			synchronized (nativeLock) {
+			synchronized (rxLock) {
 				ret = getPacketBuffered(buffer, offset, timeout);
-			}
 
-			if (ret >= 0) {
-				offset = ret;
-				buffer.position(offset);
-				len = buffer.getInt();
-				tsSec = buffer.getInt();
-				tsUsec = buffer.getInt();
-				inclLen = buffer.getInt();
-				origLen = buffer.getInt();
-				len -= 16;
-				byte data[] = new byte[len];
-				buffer.get(data, 0, len);
+				if (ret >= 0) {
+					offset = ret;
+					buffer.position(offset);
+					len = buffer.getInt();
+					tsSec = buffer.getInt();
+					tsUsec = buffer.getInt();
+					inclLen = buffer.getInt();
+					origLen = buffer.getInt();
+					len -= 16;
+					byte data[] = new byte[len];
+					buffer.get(data, 0, len);
 
-				PacketHeader ph = new PacketHeader(tsSec, tsUsec, inclLen, origLen);
-				PacketPayload pl = new PacketPayload(data);
-				PcapPacket pp = new PcapPacket(ph, pl);
-				packetList.add(pp);
-				pkt++;
-				if (pkt >= 128)
+					PacketHeader ph = new PacketHeader(tsSec, tsUsec, inclLen, origLen);
+					PacketPayload pl = new PacketPayload(data);
+					PcapPacket pp = new PcapPacket(ph, pl);
+					packetList.add(pp);
+					pkt++;
+					if (pkt >= 128)
+						return packetList;
+					timeout = 0;
+				} else {
 					return packetList;
-				timeout = 0;
-			} else {
-				return packetList;
+				}
 			}
 		}
 	}
@@ -196,7 +199,7 @@ public class PcapDevice implements PcapInputStream, PcapOutputStream {
 	// private native void write(int id, byte[] packet, int offset, int limit)
 	// throws IOException;
 	private void write(int id, byte[] packet, int offset, int limit) {
-		synchronized (nativeLock) {
+		synchronized (txLock) {
 			txbuffer.position(txoffset + 12);
 			txbuffer.put(packet, offset, limit);
 			txoffset = writeBuffer(txbuffer, limit);

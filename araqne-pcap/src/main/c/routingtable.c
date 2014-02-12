@@ -62,7 +62,8 @@ JNIEXPORT jobject JNICALL Java_org_araqne_pcap_routing_RoutingTable_getNativeRou
 	}
 
 	for(i = 0; i < pIpForwardTable->dwNumEntries; i++) {
-		jobject entry = GetRoutingEntry(env, pIpForwardTable->table+i);
+		jobject entry = NULL;
+		entry = GetRoutingEntry(env, pIpForwardTable->table+i);
 		if (entry != NULL) {
 			(*env)->CallVoidMethod(env, tables, listAdd, entry);
 		}
@@ -103,6 +104,10 @@ jobject GetRoutingEntry(JNIEnv *env, MIB_IPFORWARDROW *row) {
     // the call again fails with BUFFER_OVERFLOW. 
     // So the number is picked slightly greater than 2. 
     // We use i <5 in the example
+
+	OutBufferLength = 16384;
+        AdapterAddresses = (PIP_ADAPTER_ADDRESSES) 
+            malloc(OutBufferLength);
     for (i = 0; i < 5; i++) {
         RetVal = 
             GetAdaptersAddresses(

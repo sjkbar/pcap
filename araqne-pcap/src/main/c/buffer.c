@@ -12,6 +12,10 @@ extern pcap_t *pcds[];
 #ifdef _WIN32
 #include <WinSock2.h>
 #include <process.h>
+#ifdef Yield()
+#undef Yield()
+#define Yield() Sleep(0)
+#endif
 #else
 #include <pthread.h>
 #include <sys/types.h>
@@ -203,6 +207,7 @@ static void buffer_txthread( void *p )
 	pktheader.ts.tv_sec = 0;
 	pktheader.ts.tv_usec = 0;
 	pkt = 0;
+	buffer->squeue = pcap_sendqueue_alloc( sendqueue_buffer_max );
 
 	for ( ;; )
 	{
@@ -317,7 +322,7 @@ static void buffer_thread( void *p )
 	struct socket_t *sock = tbuf->socket;
 	struct buffer_header_t *last = (struct buffer_header_t *)tbuf->buffer, *cur;
 	int lastsize = sizeof(struct buffer_header_t);
-	int ret;
+	int ret, newret;
 	struct sockaddr_in inaddr;
 	int addrlen;
 	char *buf;
@@ -333,6 +338,8 @@ static void buffer_thread( void *p )
 				FD_ZERO(&rfds);
 				FD_SET(sock->s, &rfds);
 */
+	ret = buffer_alloc( tbuf, lastsize );
+
 	for ( ;; )
 	{
 		//WSABUF wb;
@@ -345,13 +352,6 @@ static void buffer_thread( void *p )
 			return;
 		}
 
-		ret = buffer_alloc( tbuf, lastsize );
-		if ( ret < 0 )
-		{
-			//Yield();
-			//printf("buffer overrun...\n");
-			continue;
-		}
 		cur = (struct buffer_header_t *)( tbuf->buffer + ret );
 		cur->next = -1;
 		addrlen = sizeof(inaddr);
@@ -411,8 +411,19 @@ static void buffer_thread( void *p )
 		cur->len+=16;//sizeof(struct pcap_pkthdr);
 		lastsize = sizeof(struct buffer_header_t) + ( ( cur->len + 3 ) & ~3 );
 		//lastsize = sizeof(struct buffer_header_t) + cur->len;
+
+		newret = buffer_alloc( tbuf, lastsize );
+		if ( newret < 0 )
+		{
+			//Yield();
+			//printf("buffer overrun...\n");
+			continue;
+		}
+
 		last->next = ret;
 		last = cur;
+		ret = newret;
+
 		if ( sock->waiting )
 			WSASetEvent( sock->waiter );
 	}
@@ -503,7 +514,7 @@ NO*/
 		for ( i = 0; i < thread_max; i++ )
 			sock[1].gtbuf[i].lastsize = buffer_alloc( sock[1].gtbuf + i, sizeof(struct buffer_header_t) );
 		#ifdef _WIN32
-		sock[1].squeue = pcap_sendqueue_alloc( sendqueue_buffer_max );
+		//sock[1].squeue = pcap_sendqueue_alloc( sendqueue_buffer_max );
 		#endif
 	}
 
@@ -583,6 +594,8 @@ int buffer_recvpacket( struct socket_t *sock, int freepos, int timeout )
 	buffer_free( tbuf, freepos );
 
 retry:;
+	if ( sock->terminate )
+		return -1;
 	for ( i = 0; i < thread_max; i++ )
 	{
 		tbuf = sock->gtbuf + i;
@@ -645,16 +658,17 @@ JNIEXPORT void JNICALL Java_org_araqne_pcap_live_PcapDevice_closeBuffer(JNIEnv *
 	while ( sock[0].terminate )
 		Yield();
 	sock[1].terminate = thread_max;
+	WSASetEvent( sock[1].waiter );
 	while ( sock[1].terminate )
 		Yield();
-
 
 #ifndef _WIN32
 //NO	epoll_ctl(sock->epfd, EPOLL_CTL_DEL, sock->s, NULL);
 #endif
 //	closesocket( sock->s );
 	Java_org_araqne_pcap_live_PcapDevice_close(env, obj, sock->id);
-	WSACloseEvent( sock->waiter );
+	WSACloseEvent( sock[0].waiter );
+	WSACloseEvent( sock[1].waiter );
 	free( sock );
 }
 
