@@ -404,7 +404,6 @@ static void buffer_thread( void *p )
 				return;
 			}
 		}*/
-		cur->order = InterlockedIncrement( &sock->order );
 		//cur->data[0] = 0; //ipv4
 		//cur->data[1] = 6; //len
 		//*(unsigned short *)(cur->data + 2) = htons(inaddr.sin_port); //port (little endian)
@@ -420,6 +419,7 @@ static void buffer_thread( void *p )
 			//printf("buffer overrun...\n");
 			continue;
 		}
+		cur->order = InterlockedIncrement( &sock->order );
 
 		last->next = ret;
 		last = cur;
