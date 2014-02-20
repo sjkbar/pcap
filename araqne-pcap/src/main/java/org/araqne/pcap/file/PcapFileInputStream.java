@@ -125,9 +125,15 @@ public class PcapFileInputStream implements PcapInputStream {
 	}
 
 	private PcapPacket readPacket(int magicNumber) throws IOException, EOFException {
-		PacketHeader packetHeader = readPacketHeader(magicNumber);
-		Buffer packetData = readPacketData(packetHeader.getInclLen());
-		return new PcapPacket(packetHeader, packetData);
+		long lastPosition = position;
+		try {
+			PacketHeader packetHeader = readPacketHeader(magicNumber);
+			Buffer packetData = readPacketData(packetHeader.getInclLen());
+			return new PcapPacket(packetHeader, packetData);
+		} catch (IOException e) {
+			position = lastPosition;
+			throw e;
+		}
 	}
 
 	private PacketHeader readPacketHeader(int magicNumber) throws IOException, EOFException {
@@ -160,7 +166,6 @@ public class PcapFileInputStream implements PcapInputStream {
 		Buffer payload = new ChainBuffer();
 		payload.addLast(packets);
 		return payload;
-		// return new PacketPayload(packets);
 	}
 
 	/**
