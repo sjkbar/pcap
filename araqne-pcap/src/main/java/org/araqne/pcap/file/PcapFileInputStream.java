@@ -22,6 +22,7 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.ByteBuffer;
 
 import org.araqne.pcap.PcapInputStream;
 import org.araqne.pcap.packet.PacketHeader;
@@ -39,8 +40,12 @@ import org.araqne.pcap.util.ChainBuffer;
  * @see http://wiki.wireshark.org/Development/LibpcapFileFormat
  */
 public class PcapFileInputStream implements PcapInputStream {
+	private long position;
 	private DataInputStream is;
 	private GlobalHeader globalHeader;
+
+	// for packet header i/o
+	private byte[] headerBuffer = new byte[16];
 
 	/**
 	 * Opens pcap file input stream.
@@ -92,6 +97,17 @@ public class PcapFileInputStream implements PcapInputStream {
 		return globalHeader;
 	}
 
+	/**
+	 * return next file read position
+	 */
+	public long getPosition() {
+		return position;
+	}
+
+	public void skip(long offset) throws IOException {
+		is.skipBytes((int) offset);
+	}
+
 	private void readGlobalHeader() throws IOException {
 		int magic = is.readInt();
 		short major = is.readShort();
@@ -101,6 +117,7 @@ public class PcapFileInputStream implements PcapInputStream {
 		int snaplen = is.readInt();
 		int network = is.readInt();
 
+		position += 24;
 		globalHeader = new GlobalHeader(magic, major, minor, tz, sigfigs, snaplen, network);
 
 		if (globalHeader.getMagicNumber() == 0xD4C3B2A1)
@@ -114,10 +131,15 @@ public class PcapFileInputStream implements PcapInputStream {
 	}
 
 	private PacketHeader readPacketHeader(int magicNumber) throws IOException, EOFException {
-		int tsSec = is.readInt();
-		int tsUsec = is.readInt();
-		int inclLen = is.readInt();
-		int origLen = is.readInt();
+		is.readFully(headerBuffer);
+		position += 16;
+
+		ByteBuffer bb = ByteBuffer.wrap(headerBuffer);
+
+		int tsSec = bb.getInt();
+		int tsUsec = bb.getInt();
+		int inclLen = bb.getInt();
+		int origLen = bb.getInt();
 
 		if (magicNumber == 0xD4C3B2A1) {
 			tsSec = ByteOrderConverter.swap(tsSec);
@@ -131,7 +153,9 @@ public class PcapFileInputStream implements PcapInputStream {
 
 	private Buffer readPacketData(int packetLength) throws IOException {
 		byte[] packets = new byte[packetLength];
-		is.read(packets);
+		int readBytes = is.read(packets);
+		if (readBytes > 0)
+			position += readBytes;
 
 		Buffer payload = new ChainBuffer();
 		payload.addLast(packets);

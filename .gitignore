@@ -8,3 +8,4 @@ target
 *.vcxproj.user
 Debug
 Release
+.versionsBackup

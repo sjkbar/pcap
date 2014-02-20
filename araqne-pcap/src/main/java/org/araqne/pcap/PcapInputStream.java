@@ -19,7 +19,6 @@ import java.io.IOException;
 
 import org.araqne.pcap.packet.PcapPacket;
 
-
 /**
  * @author mindori
  */

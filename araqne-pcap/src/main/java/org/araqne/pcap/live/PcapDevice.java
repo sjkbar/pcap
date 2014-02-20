@@ -48,7 +48,7 @@ public class PcapDevice implements PcapInputStream, PcapOutputStream {
 	private Object rxLock = new Object();
 	private Object txLock = new Object();
 
-	private boolean isOpen = true;
+	private volatile boolean isOpen = true;
 	private int handle;
 	private PcapDeviceMetadata metadata;
 	private Set<PcapDeviceEventListener> callbacks;
@@ -120,6 +120,9 @@ public class PcapDevice implements PcapInputStream, PcapOutputStream {
 		while (true) {
 			int ret = 0;
 			synchronized (rxLock) {
+				if (!isOpen)
+					throw new IllegalStateException("device is closed");
+
 				ret = getPacketBuffered(buffer, offset, timeout);
 
 				if (ret >= 0) {
@@ -199,6 +202,9 @@ public class PcapDevice implements PcapInputStream, PcapOutputStream {
 	// throws IOException;
 	private void write(int id, byte[] packet, int offset, int limit) {
 		synchronized (txLock) {
+			if (!isOpen)
+				throw new IllegalStateException("device is closed");
+
 			txbuffer.position(txoffset + 12);
 			txbuffer.put(packet, offset, limit);
 			txoffset = writeBuffer(txbuffer, limit);
@@ -291,9 +297,14 @@ public class PcapDevice implements PcapInputStream, PcapOutputStream {
 	public void close() throws IOException {
 		verify();
 
-		synchronized (nativeLock) {
-			closeBuffer(buffer);// handle);
-			isOpen = false;
+		synchronized (txLock) {
+			synchronized (rxLock) {
+				synchronized (nativeLock) {
+					closeBuffer(buffer);// handle);
+					isOpen = false;
+				}
+
+			}
 		}
 
 		for (PcapDeviceEventListener callback : callbacks) {

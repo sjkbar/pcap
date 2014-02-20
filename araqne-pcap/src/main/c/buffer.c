@@ -440,7 +440,7 @@ static void buffer_socket_init( struct socket_t *sock, int id )
 	sock->waiter = WSACreateEvent();
 	sock->waiting = 0;
 	sock->id = id;
-	sock->pcd = pcds[id];
+	//sock->pcd = pcds[id];
 
 	for ( i = 0; i < thread_max; i++ )
 	{
@@ -474,13 +474,22 @@ JNIEXPORT jobject JNICALL Java_org_araqne_pcap_live_PcapDevice_openBuffer(JNIEnv
 
 //	WSAStartup( 0x202, &wd );
 
-	Java_org_araqne_pcap_live_PcapDevice_open(env, obj, id, name, snaplen, promisc, milliseconds);
-	if ( pcds[id] == NULL )
-		return NULL;
-
 	sock = (struct socket_t *)malloc(sizeof(struct socket_t) * ( txon ? 2:1 ) ); 
 	jbuf = (*env)->NewDirectByteBuffer(env, sock, sizeof(struct socket_t) );
 
+	Java_org_araqne_pcap_live_PcapDevice_open(env, obj, id, name, snaplen, promisc, milliseconds);
+	if ( pcds[id] == NULL )
+		return NULL;
+	sock[0].pcd = pcds[id];
+
+	if ( txon )
+	{
+		pcds[id] = NULL;
+		Java_org_araqne_pcap_live_PcapDevice_open(env, obj, id, name, snaplen, promisc, milliseconds);
+		if ( pcds[id] == NULL )
+			return NULL;
+		sock[1].pcd = pcds[id];
+	}
 /*NO
 	if ( ( sock->s = socket( AF_INET, SOCK_DGRAM, 0 ) ) == -1 )
 	{
@@ -668,6 +677,9 @@ JNIEXPORT void JNICALL Java_org_araqne_pcap_live_PcapDevice_closeBuffer(JNIEnv *
 #endif
 //	closesocket( sock->s );
 	Java_org_araqne_pcap_live_PcapDevice_close(env, obj, sock->id);
+	pcds[sock->id] = sock[0].pcd;
+	Java_org_araqne_pcap_live_PcapDevice_close(env, obj, sock->id);
+
 	WSACloseEvent( sock[0].waiter );
 	WSACloseEvent( sock[1].waiter );
 	free( sock );
