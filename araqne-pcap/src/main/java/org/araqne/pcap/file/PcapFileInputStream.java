@@ -105,7 +105,10 @@ public class PcapFileInputStream implements PcapInputStream {
 	}
 
 	public void skip(long offset) throws IOException {
-		is.skipBytes((int) offset);
+		if (offset < 0)
+			return;
+
+		position += is.skipBytes((int) offset);
 	}
 
 	private void readGlobalHeader() throws IOException {
@@ -158,10 +161,22 @@ public class PcapFileInputStream implements PcapInputStream {
 	}
 
 	private Buffer readPacketData(int packetLength) throws IOException {
+		if (packetLength < 0) {
+			throw new IOException("broken packet length: " + packetLength);
+		}
+
+		int total = 0;
 		byte[] packets = new byte[packetLength];
-		int readBytes = is.read(packets);
-		if (readBytes > 0)
-			position += readBytes;
+
+		while (total < packetLength) {
+			int readBytes = is.read(packets, total, packetLength - total);
+			if (readBytes <= 0)
+				throw new EOFException("insufficient packet payload: expected " + packetLength + ", actual " + total);
+
+			total += readBytes;
+		}
+
+		position += total;
 
 		Buffer payload = new ChainBuffer();
 		payload.addLast(packets);
