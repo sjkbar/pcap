@@ -36,15 +36,15 @@ public class PcapDeviceMetadata {
 	private final int networkPrefixLength;
 
 	private PcapDeviceMetadata(String name, String description, boolean loopback, String datalinkName,
-			String datalinkDescription, byte[] macAddress, AddressBinding[] bindings, byte[] subnet,
-			int networkPrefixLength) throws UnknownHostException {
+			String datalinkDescription, byte[] macAddress, AddressBinding[] bindings, byte[] subnet, int networkPrefixLength)
+			throws UnknownHostException {
 		this.name = name;
 		this.description = description;
 		this.loopback = loopback;
 		this.datalinkName = datalinkName;
 		this.datalinkDescription = datalinkDescription;
 		this.macAddress = new MacAddress(macAddress);
-		this.bindings = bindings;
+		this.bindings = removeNullBinding(bindings);
 		this.subnet = InetAddress.getByAddress(subnet);
 		this.networkPrefixLength = networkPrefixLength;
 
@@ -55,6 +55,26 @@ public class PcapDeviceMetadata {
 		}
 
 		mask = IpConverter.toInetAddress(m);
+	}
+
+	private AddressBinding[] removeNullBinding(AddressBinding[] raw) {
+		int count = 0;
+		for (AddressBinding b : raw) {
+			if (b != null)
+				count++;
+		}
+
+		AddressBinding[] filtered = new AddressBinding[count];
+
+		int i = 0;
+		for (AddressBinding b : raw) {
+			if (b == null)
+				continue;
+
+			filtered[i++] = b;
+		}
+
+		return filtered;
 	}
 
 	public boolean isIntranet(InetAddress ip) {
